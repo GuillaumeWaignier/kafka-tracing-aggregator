@@ -14,6 +14,8 @@ services:
   elasticsearch:
     image: "elasticsearch:7.6.0"
     hostname: elasticsearch
+    ports:
+      - 9200:9200
     environment:
       - node.name=elasticsearch
       - cluster.name=es-docker-cluster
@@ -23,7 +25,6 @@ services:
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     networks:
       - elastic
-
 
   kibana:
     image: "kibana:7.6.0"
@@ -36,7 +37,6 @@ services:
       - elasticsearch
     networks:
       - elastic
-
 
 networks:
   elastic:
