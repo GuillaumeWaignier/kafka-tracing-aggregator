@@ -1,0 +1,68 @@
+version: "3.7"
+services:
+#  aggregate-trace:
+#    image: "ianitrix/kafka:latest"
+#    networks:
+#      - confluent
+#    command: "kafka-producer-perf-test --topic test --num-records 1000000 --throughput 1 --record-size 100 --producer-props interceptor.classes=org.ianitrix.kafka.interceptors.ProducerTracingInterceptor bootstrap.servers=kafka:9092 client.id=myProducer"
+#    volumes:
+#      - ../../../target/tracing-interceptors-0.0.1-SNAPSHOT-jar-with-dependencies.jar:/confluent-5.4.0/share/java/kafka/tracing-interceptors.jar:ro
+#    depends_on:
+#      - kafka
+#    restart: on-failure
+
+  elasticsearch:
+    image: "elasticsearch:7.6.0"
+    hostname: elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=elasticsearch
+      - cluster.initial_master_nodes=elasticsearch
+      - bootstrap.memory_lock=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    networks:
+      - elastic
+
+
+  kibana:
+    image: "kibana:7.6.0"
+    hostname: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic
+
+
+networks:
+  elastic:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
