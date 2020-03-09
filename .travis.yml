@@ -1,0 +1,20 @@
+language: java
+install: true
+
+addons:
+  sonarcloud:
+    organization: "guillaumewaignier-github"
+    token:
+      secure: "nPsofvKy6usurbGoKoQBtf9Q+dPwU7GVqFxqatMN4TbjkTdm5MbgNSFuuLZVMvasXxZhVo5GTsx1v3fUo2nk2Vzly98svZx2ymrXqE2vV209imuMZpTGzZK9nhab6uk9oR8NR8EnfDgjppyTYpu2qGHczFMp2V2IyeUeGMRzbzlM+wI7DIQWAqh2SCIUbI/6EwJiPeIo9+D4x3iplNLtgrKTFj2WXgnkxppCJT+a40gQWbTsOpwApmLstU3onVv15XPYBCyvdWRblepbz2QhhaxwcGQcWOmONK+qnAuH2j25gSDsI3PyfYPiZbHM8jnsEcBvlfgJ4XTMiYWzwdT5wMHdml3IcEt9OhMrYeloXuePk+OEjqCcGUUDTrd7qQkCU0K7BiSlSEk2OtyA8+kKAZAdjLCAQ6FKSccFgv734b/CNGFCI9VcVAAS9u+bT1V28GvjrhWSz3aNbVACWOGHNfdr1QALW7tjcpUx7AGP+RKi5tJ8syV2ph5jlgF3KRmXjHyzAyO/Ib9pIz2FixkqnimuUJnI/YDkZIzaQ+FAHYlDzrs7J0T4Mhh0Au2QFOoUAoTY0jKnj7tMP91mU+BNQ5oQIiwroliarbu/D+MvBCKB674X5sc714L/GlUJKFPlRnFsPg9PRRBr+66FWvrheCe8TdApmFUoVBTrxJ8t6Zo="
+jdk:
+  - openjdk11
+
+
+script:
+  - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent org.jacoco:jacoco-maven-plugin:report package sonar:sonar
+
+
+cache:
+  directories:
+    - '$HOME/.m2/repository'
+    - '$HOME/.sonar/cache'
