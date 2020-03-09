@@ -1,15 +1,11 @@
 version: "3.7"
 services:
-#  aggregate-trace:
-#    image: "ianitrix/kafka:latest"
-#    networks:
-#      - confluent
-#    command: "kafka-producer-perf-test --topic test --num-records 1000000 --throughput 1 --record-size 100 --producer-props interceptor.classes=org.ianitrix.kafka.interceptors.ProducerTracingInterceptor bootstrap.servers=kafka:9092 client.id=myProducer"
-#    volumes:
-#      - ../../../target/tracing-interceptors-0.0.1-SNAPSHOT-jar-with-dependencies.jar:/confluent-5.4.0/share/java/kafka/tracing-interceptors.jar:ro
-#    depends_on:
-#      - kafka
-#    restart: on-failure
+  aggregate-trace:
+    image: "ianitrix/kafka-tracing-aggregator:latest"
+    environment:
+      - "KAFKATRACE_BOOTSTRAP_SERVERS=kafka:9092"
+    networks:
+      - elastic
 
   elasticsearch:
     image: "elasticsearch:7.6.1"
