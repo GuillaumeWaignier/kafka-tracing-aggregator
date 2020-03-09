@@ -69,7 +69,7 @@ public class TraceTopologyStreamBuilder {
         //commit
         final KStream<TracingKey, TracingValue> enrichedCommit = commitTraceStream.join(consumeTraceStream,
                 this::enrichCommit,
-                JoinWindows.of(Duration.ofDays(1)),
+                JoinWindows.of(Duration.ofMinutes(6)),
                 StreamJoined.with(tracingKeySerde, tracingValueSerde, tracingValueSerde).withName("commit"));
         enrichedCommit.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
 
