@@ -37,7 +37,7 @@ services:
       - elastic
 
   kafka-connect:
-    image: "confluentinc/cp-kafka-connect:5.3.1"
+    image: "confluentinc/cp-kafka-connect:5.4.1"
     hostname: kafka-connect
     ports:
       - 8083:8083
@@ -69,16 +69,16 @@ services:
       -  "CONNECT_LOG4J_LOGGERS=org.reflections=ERROR"
     restart: on-failure
 
-  load-es-connector:
+  load-es-connector-trace:
     image: "curlimages/curl:7.69.0"
     hostname: curl
     command: >
       curl -XPOST -H "Content-Type: application/json" http://kafka-connect:8083/connectors -d '
         {
-           "name":"test",
+           "name":"aggregatedTrace",
            "config": {
              "connector.class":"ElasticsearchSinkConnector",
-             "name":"test",
+             "name":"aggregatedTrace",
              "connection.url":"http://elasticsearch:9200",
              "type.name":"trace",
              "topics":"_aggregatedTrace",
@@ -98,6 +98,46 @@ services:
       - elastic
     restart: on-failure
 
+  load-es-connector-raw:
+    image: "curlimages/curl:7.69.0"
+    hostname: curl
+    command: >
+      curl -XPOST -H "Content-Type: application/json" http://kafka-connect:8083/connectors -d '
+        {
+           "name":"rawTrace",
+           "config": {
+             "connector.class":"ElasticsearchSinkConnector",
+             "name":"rawTrace",
+             "connection.url":"http://elasticsearch:9200",
+             "type.name":"trace",
+             "topics":"_tracing",
+             "auto.create.indices.at.start": false,
+             "key.ignore": "true",
+             "schema.ignore":true,
+             "transforms":"topic",
+             "transforms.topic.regex":".*",
+             "transforms.topic.type":"org.apache.kafka.connect.transforms.RegexRouter",
+             "transforms.topic.replacement":"rawTrace",
+             "errors.tolerance":"none",
+             "errors.retry.timeout":-1
+           }}'
+    depends_on:
+      - kafka-connect
+    networks:
+      - elastic
+    restart: on-failure
+
+  load-kibana-dashboard:
+    image: "curlimages/curl:7.69.0"
+    hostname: curl
+    command: "curl -X POST 'http://kibana:5601/api/saved_objects/_import' -H 'kbn-xsrf: true' --form file=@kibana.ndjson"
+    depends_on:
+      - kibana
+    networks:
+      - elastic
+    restart: on-failure
+    volumes:
+      - ./kibana.ndjson:/kibana.ndjson:ro
 
 networks:
   elastic:
