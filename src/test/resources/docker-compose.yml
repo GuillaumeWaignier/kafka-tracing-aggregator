@@ -21,7 +21,19 @@ services:
     networks:
       - elastic
 
-  
+  metricbeat:
+    image: "docker.elastic.co/beats/metricbeat:${ELASTIC_VERSION}"
+    hostname: metricbeat
+    environment:
+      - output.elasticsearch.hosts=["elasticsearch:9200"]
+    volumes:
+      - ./prommetric.yml:/usr/share/metricbeat/modules.d/prometheus.yml:ro
+    networks:
+      - elastic
+    depends_on:
+      - elasticsearch
+      - aggregate-trace
+
   kibana:
     image: "kibana:${ELASTIC_VERSION}"
     hostname: kibana
