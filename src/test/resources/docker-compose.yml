@@ -2,13 +2,14 @@ version: "3.7"
 services:
   aggregate-trace:
     image: "ianitrix/kafka-tracing-aggregator:latest"
+    hostname: aggregate-trace
     environment:
       - "KAFKATRACE_BOOTSTRAP_SERVERS=kafka:9092"
     networks:
       - elastic
 
   elasticsearch:
-    image: "elasticsearch:7.6.1"
+    image: "elasticsearch:${ELASTIC_VERSION}"
     hostname: elasticsearch
     environment:
       - node.name=elasticsearch
@@ -20,8 +21,9 @@ services:
     networks:
       - elastic
 
+  
   kibana:
-    image: "kibana:7.6.1"
+    image: "kibana:${ELASTIC_VERSION}"
     hostname: kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
@@ -33,7 +35,7 @@ services:
       - elastic
 
   kafka-connect:
-    image: "confluentinc/cp-kafka-connect:5.4.1"
+    image: "confluentinc/cp-kafka-connect:${CONFLUENT_VERSION}"
     hostname: kafka-connect
     ports:
       - 8083:8083
