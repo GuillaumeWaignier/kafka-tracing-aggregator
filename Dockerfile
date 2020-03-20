@@ -1,7 +1,7 @@
 FROM openjdk:11.0.3-slim
 
 
-ARG PROMETHEUS_VERSION=0.11.0
+ARG PROMETHEUS_VERSION=0.12.0
 
 ENV java_option -javaagent:/tracing-aggregator/jmx_prometheus_javaagent.jar=8080:/tracing-aggregator/config/prometheus-exporter.yml
 ENV PATH ${PATH}:/tracing-aggregator/bin

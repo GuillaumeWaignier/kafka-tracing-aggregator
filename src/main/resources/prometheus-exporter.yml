@@ -1,1 +1,16 @@
 lowercaseOutputName: true
+
+rules:
+  - pattern: "kafka.streams<type=stream-rocksdb-window-state-metrics, client-id=(.+), task-id=(.+), rocksdb-window-state-id=(.+)><>(.*): (.*)"
+    name: "kafka_stream_rocksdb_window_state_metrics_$4"
+    value: "1"
+    type: GAUGE
+    labels:
+      clientid: "$1"
+      taskid: "$2"
+      rocksdbwindowstateid: "$3"
+      test : "$5"
+
+# kafka.streams:type=stream-rocksdb-window-state-metrics,client-id=_aggregator-trace-stream2-f9d8855e-8ccb-489c-9687-4bec0d674fa9-StreamThread-1,task-id=0_0,rocksdb-window-state-id=KSTREAM-JOINOTHER-0000000013-store
+
+# kafka_streams_stream_rocksdb_window_state_metrics_flush_latency_max{client_id="_aggregator-trace-stream-397b8699-97f5-4ca0-af0f-7a2e4daf639b-StreamThread-1",task_id="0_0",rocksdb_window_state_id="KSTREAM-JOINTHIS-0000000012-store",} NaN

@@ -1,0 +1,13 @@
+metricbeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: false
+
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+
+
+setup.template:
+  name: "metricbeat"
+  fields: "customfield.yml"
+  enabled: true
+  overwrite: true

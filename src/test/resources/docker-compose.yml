@@ -27,7 +27,9 @@ services:
     environment:
       - output.elasticsearch.hosts=["elasticsearch:9200"]
     volumes:
-      - ./prommetric.yml:/usr/share/metricbeat/modules.d/prometheus.yml:ro
+      - ./metricbeat/prometheus.yml:/usr/share/metricbeat/modules.d/prometheus.yml:ro
+      - ./metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
+      - ./metricbeat/customfield.yml:/usr/share/metricbeat/customfield.yml:ro
     networks:
       - elastic
     depends_on:
