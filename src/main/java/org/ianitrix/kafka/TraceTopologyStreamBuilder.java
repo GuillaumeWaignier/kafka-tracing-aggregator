@@ -59,19 +59,22 @@ public class TraceTopologyStreamBuilder {
                 StreamJoined.with(tracingKeySerde, tracingValueSerde, tracingValueSerde).withName("ack"));
         enrichedAck.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
 
-        // consume
-        final KStream<TracingKey, TracingValue> enrichedConsume = consumeTraceStream.join(enrichedSend,
-                this::enrichConsume,
-                JoinWindows.of(Duration.ofDays(1)),
-                StreamJoined.with(tracingKeySerde, tracingValueSerde, tracingValueSerde).withName("consume"));
-        enrichedConsume.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
-
         //commit
         final KStream<TracingKey, TracingValue> enrichedCommit = commitTraceStream.join(consumeTraceStream,
                 this::enrichCommit,
                 JoinWindows.of(Duration.ofMinutes(6)),
                 StreamJoined.with(tracingKeySerde, tracingValueSerde, tracingValueSerde).withName("commit"));
         enrichedCommit.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
+
+        // consume
+        final KStream<TracingKey, TracingValue> enrichedConsume = consumeTraceStream
+                .selectKey(this::createTopicPartitionOffsetKey)
+                .join(enrichedSend,
+                this::enrichConsume,
+                JoinWindows.of(Duration.ofDays(1)),
+                StreamJoined.with(tracingKeySerde, tracingValueSerde, tracingValueSerde).withName("consume"));
+        enrichedConsume.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
+
 
         return builder.build();
     }

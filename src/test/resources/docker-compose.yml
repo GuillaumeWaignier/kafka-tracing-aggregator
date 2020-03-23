@@ -5,6 +5,7 @@ services:
     hostname: aggregate-trace
     environment:
       - "KAFKATRACE_BOOTSTRAP_SERVERS=kafka:9092"
+      - "KAFKATRACE_APPLICATION_ID=_aggregator-trace-stream-docker"
     networks:
       - elastic
 
