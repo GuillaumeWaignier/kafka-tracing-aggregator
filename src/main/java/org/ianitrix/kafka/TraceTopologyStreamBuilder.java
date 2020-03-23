@@ -16,7 +16,7 @@ import java.time.Instant;
 @Slf4j
 public class TraceTopologyStreamBuilder {
 
-    private static final String OUTPUT_TRACE_TOPIC = "_aggregatedTrace";
+    public static final String OUTPUT_TRACE_TOPIC = "_aggregatedTrace";
 
     private final Serde<TracingKey> tracingKeySerde = SerdesUtils.createJsonSerdes(TracingKey.class);
     private final Serde<TracingValue> tracingValueSerde = SerdesUtils.createJsonSerdes(TracingValue.class);
@@ -74,7 +74,6 @@ public class TraceTopologyStreamBuilder {
                 JoinWindows.of(Duration.ofDays(1)),
                 StreamJoined.with(tracingKeySerde, tracingValueSerde, tracingValueSerde).withName("consume"));
         enrichedConsume.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
-
 
         return builder.build();
     }

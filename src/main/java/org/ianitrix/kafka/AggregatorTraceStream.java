@@ -29,8 +29,7 @@ public class AggregatorTraceStream {
 
         checkArgument(args);
 
-        final Properties config = getDefaultStreamConfig();
-        config.putAll(loadConfigurationFile(args[0]));
+        final Properties config = computeStreamConfig(args[0]);
 
         final Topology topology = new TraceTopologyStreamBuilder().buildStream();
         log.info(topology.describe().toString());
@@ -43,7 +42,13 @@ public class AggregatorTraceStream {
         log.info("Started in {} ms", Duration.between(startTime, endTime).toMillis());
     }
 
-    public static Properties getDefaultStreamConfig() {
+    public static Properties computeStreamConfig(final String file) {
+        final Properties config = getDefaultStreamConfig();
+        config.putAll(loadConfigurationFile(file));
+        return config;
+    }
+
+    private static Properties getDefaultStreamConfig() {
         Properties settings = new Properties();
         settings.put(StreamsConfig.APPLICATION_ID_CONFIG, "_aggregator-trace-stream");
         settings.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.ByteArraySerde.class);
@@ -68,7 +73,7 @@ public class AggregatorTraceStream {
         }
     }
 
-    public static Properties loadConfigurationFile(final String file) {
+    private static Properties loadConfigurationFile(final String file) {
         final File propertiesFile = new File(file);
         final Properties properties = new Properties();
 
