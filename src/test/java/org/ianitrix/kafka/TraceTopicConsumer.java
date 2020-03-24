@@ -61,7 +61,7 @@ public class TraceTopicConsumer implements Runnable {
         try {
             final TracingValue tracingValue = mapper.readValue(record.value(), TracingValue.class);
             this.traces.add(tracingValue);
-            log.debug(tracingValue.toString());
+            log.info("####### READ AGGREGATED TRACE ###### : {}", tracingValue.toString());
         } catch (final IOException e) {
             log.error("Impossible to convert trace {}", record, e);
         }
