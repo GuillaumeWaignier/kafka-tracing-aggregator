@@ -29,6 +29,7 @@
 		<!-- dependency versions -->
 		<awaitility.version>3.1.6</awaitility.version>
 		<confluent.version>5.4.1</confluent.version>
+		<elasticsearch.version>7.6.1</elasticsearch.version>
 		<junit.version>5.4.2</junit.version>
 		<kafka.version>2.4.0</kafka.version>
 		<logback.version>1.2.3</logback.version>
@@ -115,6 +116,12 @@
 			<groupId>org.apache.kafka</groupId>
 			<artifactId>kafka-streams-test-utils</artifactId>
 			<version>${kafka.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.elasticsearch.client</groupId>
+			<artifactId>elasticsearch-rest-client</artifactId>
+			<version>${elasticsearch.version}</version>
 			<scope>test</scope>
 		</dependency>
 

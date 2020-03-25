@@ -6,6 +6,7 @@ import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -18,7 +19,10 @@ import org.apache.kafka.streams.Topology;
 import org.ianitrix.kafka.interceptors.AbstractTracingInterceptor;
 import org.ianitrix.kafka.interceptors.ConsumerTracingInterceptor;
 import org.ianitrix.kafka.interceptors.ProducerTracingInterceptor;
+import org.ianitrix.kafka.utils.ElasticsearchClient;
+import org.ianitrix.kafka.utils.TraceTopicConsumer;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
@@ -35,6 +39,8 @@ public class AbstractEnrichedTraceTest {
     protected static KafkaConsumer<String, String> consumer2;
 
     protected static TraceTopicConsumer traceTopicConsumer;
+    protected static ElasticsearchClient elasticsearchClient;
+
     private static KafkaStreams streams;
 
 
@@ -44,14 +50,16 @@ public class AbstractEnrichedTraceTest {
         createConsumers();
         traceTopicConsumer = new TraceTopicConsumer(KAFKA_BOOTSTRAP_SERVER);
         createKstreamApplication();
+        elasticsearchClient = new ElasticsearchClient();
     }
 
-    public static void globalShutdow() {
+    public static void globalShutdown() throws IOException {
         consumer1.close();
         consumer2.close();
         producer.close();
         producerWithInterceptor.close();
         streams.close();
+        elasticsearchClient.close();
     }
 
     private static void createTopic() throws ExecutionException, InterruptedException {
@@ -67,7 +75,7 @@ public class AbstractEnrichedTraceTest {
     private static void createKstreamApplication() {
         final Properties config = AggregatorTraceStream.computeStreamConfig("src/test/resources/config.properties");
         config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA_BOOTSTRAP_SERVER);
-        config.put(StreamsConfig.STATE_DIR_CONFIG, "./target/storeSend");
+        config.put(StreamsConfig.STATE_DIR_CONFIG, "./target/testStore" + UUID.randomUUID().toString());
         final Topology topology = new TraceTopologyStreamBuilder().buildStream();
         log.info(topology.describe().toString());
 
@@ -124,5 +132,15 @@ public class AbstractEnrichedTraceTest {
 
     protected Long computeDuration(String startDate, String endDate) {
         return java.time.Duration.between(Instant.parse(startDate), Instant.parse(endDate)).toMillis();
+    }
+
+    protected void consumeTopic(KafkaConsumer<String, String> consumer, final String topic, final int expectedRecordNumber) {
+        consumer.subscribe(List.of(topic));
+        final List<String> result = new LinkedList<>();
+        while (result.size() != expectedRecordNumber) {
+            final ConsumerRecords<String, String> records = consumer.poll(java.time.Duration.ofMillis(200));
+            records.forEach(record -> result.add(record.value()));
+        }
+        consumer.commitSync();
     }
 }

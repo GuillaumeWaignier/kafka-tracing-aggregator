@@ -39,6 +39,84 @@ services:
       - KAFKA_DEFAULT_REPLICATION_FACTOR=1
       - KAFKA_OPTS=-Xms256m -Xmx256m
 
+  kafka-connect:
+    image: "confluentinc/cp-kafka-connect:${CONFLUENT_VERSION}"
+    hostname: kafka-connect
+    ports:
+      - 8083:8083
+    networks:
+      - confluent
+    depends_on:
+      - kafka
+    environment:
+      - KAFKA_OPTS=-Xms512m -Xmx512m
+      - CONNECT_BOOTSTRAP_SERVERS=kafka:9092
+      - CONNECT_REST_PORT=8083
+      - CONNECT_GROUP_ID=connect
+      - CONNECT_CONFIG_STORAGE_TOPIC=_connect-config
+      - CONNECT_OFFSET_STORAGE_TOPIC=_connect-offsets
+      - CONNECT_STATUS_STORAGE_TOPIC=_connect-status
+      - CONNECT_REPLICATION_FACTOR=1
+      - CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR=1
+      - CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR=1
+      - CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=1
+      - CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=false
+      - CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=false
+      - CONNECT_INTERNAL_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_INTERNAL_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_REST_ADVERTISED_HOST_NAME=kafka-connect
+      - CONNECT_PLUGIN_PATH=/usr/share/java
+      - CONNECT_LOG4J_ROOT_LOGLEVEL=INFO
+      - CONNECT_LOG4J_LOGGERS=org.reflections=ERROR
+    restart: on-failure
+
+  elasticsearch:
+    image: "elasticsearch:${ELASTIC_VERSION}"
+    hostname: elasticsearch
+    ports:
+      - 9200:9200
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=elasticsearch
+      - cluster.initial_master_nodes=elasticsearch
+      - bootstrap.memory_lock=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    networks:
+      - confluent
+
+  load-es-connector-trace:
+    image: "curlimages/curl:7.69.0"
+    hostname: curl
+    command: >
+      curl -XPOST -H "Content-Type: application/json" http://kafka-connect:8083/connectors -d '
+      {
+         "name":"aggregatedTrace",
+         "config": {
+           "connector.class":"ElasticsearchSinkConnector",
+           "name":"aggregatedTrace",
+           "connection.url":"http://elasticsearch:9200",
+           "type.name":"trace",
+           "topics":"_aggregatedTrace",
+           "auto.create.indices.at.start": false,
+           "key.ignore": "true",
+           "schema.ignore":true,
+           "transforms":"topic",
+           "transforms.topic.regex":".*",
+           "transforms.topic.type":"org.apache.kafka.connect.transforms.RegexRouter",
+           "transforms.topic.replacement":"trace",
+           "errors.tolerance":"none",
+           "errors.retry.timeout":-1
+         }}'
+    depends_on:
+      - kafka-connect
+    networks:
+      - confluent
+    restart: on-failure
+
+
   kafkahq:
     image: tchiotludo/kafkahq:0.12.0
     container_name: kafkahq

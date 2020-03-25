@@ -17,6 +17,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -28,7 +29,8 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
     @Container
     public static final DockerComposeContainer KAFKA =
             new DockerComposeContainer(new File("src/test/resources/compose-test.yml"))
-                    .withExposedService("kafka_1", 9092, Wait.forListeningPort().withStartupTimeout(java.time.Duration.ofMinutes(3)))
+                    .withExposedService("kafka_1", 9092, Wait.forListeningPort().withStartupTimeout(java.time.Duration.ofMinutes(5)))
+                    .withExposedService("elasticsearch_1", 9200, Wait.forListeningPort().withStartupTimeout(java.time.Duration.ofMinutes(5)))
                     .withLocalCompose(true);
 
     @BeforeAll
@@ -37,12 +39,12 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
     }
 
     @AfterAll
-    public static void shutdown() {
-        globalShutdow();
+    public static void shutdown() throws IOException {
+        globalShutdown();
     }
 
     @Test
-    public void testSendMessage() throws ExecutionException, InterruptedException {
+    public void testSendMessage() throws ExecutionException, InterruptedException, IOException {
         subTestFirstSend();
         subTestSecondSend();
 
@@ -51,15 +53,17 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
 
 
 
-    private void subTestFirstSend() throws ExecutionException, InterruptedException {
+    private void subTestFirstSend() throws ExecutionException, InterruptedException, IOException {
         //send record
         this.sendRecord("test", 0, "C-ID1");
 
         //check trace
-        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> traceTopicConsumer.traces.size() == 2);
+        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.numberOfTraces() == 2);
 
         //assert
-        final TracingValue send = traceTopicConsumer.traces.get(0);
+        final List<TracingValue> sends = elasticsearchClient.searchTraceByType(TraceType.SEND);
+        Assertions.assertEquals(1, sends.size(), "There is 1 Send record");
+        final TracingValue send = sends.get(0);
         final String sendDate = send.getDate();
         final TracingValue expectedSend = TracingValue.builder()
                 .correlationId("C-ID1")
@@ -72,7 +76,9 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
                 .build();
         Assertions.assertEquals(expectedSend, send, "Send record C-ID1");
 
-        final TracingValue ack = traceTopicConsumer.traces.get(1);
+        final List<TracingValue> acks = elasticsearchClient.searchTraceByType(TraceType.ACK);
+        Assertions.assertEquals(1, acks.size(), "There is 1 ack record");
+        final TracingValue ack = acks.get(0);
         final String ackDate = ack.getDate();
         final TracingValue expectedAck = TracingValue.builder()
                 .correlationId("C-ID1")
@@ -99,10 +105,12 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
         this.sendRecord("test", 1, "C-ID2");
 
         //check trace
-        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> traceTopicConsumer.traces.size() == 4);
+        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.numberOfTraces() == 4);
 
         //assert
-        final TracingValue send = traceTopicConsumer.traces.get(2);
+        final List<TracingValue> sends = elasticsearchClient.searchTraceByType(TraceType.SEND);
+        Assertions.assertEquals(2, sends.size(), "There is 2 Send record");
+        final TracingValue send = sends.get(1);
         final String sendDate = send.getDate();
         final TracingValue expectedSend = TracingValue.builder()
                 .correlationId("C-ID2")
@@ -115,7 +123,9 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
                 .build();
         Assertions.assertEquals(expectedSend, send, "Send record C-ID2");
 
-        final TracingValue ack = traceTopicConsumer.traces.get(3);
+        final List<TracingValue> acks = elasticsearchClient.searchTraceByType(TraceType.ACK);
+        Assertions.assertEquals(2, acks.size(), "There is 2 Ack record");
+        final TracingValue ack = acks.get(1);
         final String ackDate = ack.getDate();
         final TracingValue expectedAck = TracingValue.builder()
                 .correlationId("C-ID2")
@@ -136,88 +146,58 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
 
         consumeTopic(consumer1, "test", 5);
 
-        //check trace
-        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> traceTopicConsumer.traces.size() == 9);
+        //check All traces with correlationId C-ID1 (send, ack, consume, commit)
+        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.searchTraceByCorrelationId("C-ID1").size() == 4);
 
         //assert
+        final List<TracingValue> traceCorrelationId1 =  elasticsearchClient.searchTraceByCorrelationId("C-ID1");
+        Assertions.assertEquals(TraceType.SEND, traceCorrelationId1.get(0).getType(), "C-ID1 : first message = send");
+        Assertions.assertEquals(TraceType.ACK, traceCorrelationId1.get(1).getType(), "C-ID1 : second message = ack");
+        final TracingValue consume1 = traceCorrelationId1.get(2);
         final String sendDate1 = traceTopicConsumer.traces.get(0).getDate();
+        final String consumeDate1 = consume1.getDate();
+        final TracingValue expectedConsume1 = TracingValue.builder()
+                .correlationId("C-ID1")
+                .topic("test")
+                .partition(0)
+                .offset(0L)
+                .type(TraceType.CONSUME)
+                .clientId("consumer1-clientId")
+                .groupId("consumer1")
+                .date(consumeDate1)
+                .durationMs(this.computeDuration(sendDate1, consumeDate1))
+                .build();
+        Assertions.assertEquals(expectedConsume1, consume1, "Consume record C-ID1");
+
+        //TODO check commit 1
+
+
+        //check All traces with correlationId C-ID2 (send, ack, consume, commit)
+        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.searchTraceByCorrelationId("C-ID2").size() == 4);
+
+        //assert
+        final List<TracingValue> traceCorrelationId2 =  elasticsearchClient.searchTraceByCorrelationId("C-ID2");
+        Assertions.assertEquals(TraceType.SEND, traceCorrelationId2.get(0).getType(), "C-ID2 : first message = send");
+        Assertions.assertEquals(TraceType.ACK, traceCorrelationId2.get(1).getType(), "C-ID2 : second message = ack");
+        final TracingValue consume2 = traceCorrelationId2.get(2);
         final String sendDate2 = traceTopicConsumer.traces.get(2).getDate();
+        final String consumeDate2 = consume2.getDate();
+        final TracingValue expectedConsume2 = TracingValue.builder()
+                .correlationId("C-ID2")
+                .topic("test")
+                .partition(1)
+                .offset(3L)
+                .type(TraceType.CONSUME)
+                .clientId("consumer1-clientId")
+                .groupId("consumer1")
+                .date(consumeDate2)
+                .durationMs(this.computeDuration(sendDate2, consumeDate2))
+                .build();
+        Assertions.assertEquals(expectedConsume2, consume2, "Consume record C-ID2");
+
+        //TODO check commit 2
 
 
-        // we can consume partition 0 or 1.
-        int recordNumber = 5;
-        int numberOfConsumeWithoutCorrelationIdChecked = 0;
-        int numberOfConsumerWithCorrelationIdChecked = 0;
 
-        while (recordNumber < 9) {
-
-            final TracingValue consume = traceTopicConsumer.traces.get(recordNumber);
-
-            if (! consume.getType().equals(TraceType.CONSUME)) {
-                recordNumber++;
-                continue;
-            }
-
-            if ("C-ID1".equals(consume.getCorrelationId())) {
-                final String consumeDate = consume.getDate();
-                final TracingValue expectedConsume = TracingValue.builder()
-                        .correlationId("C-ID1")
-                        .topic("test")
-                        .partition(0)
-                        .offset(0L)
-                        .type(TraceType.CONSUME)
-                        .clientId("consumer1-clientId")
-                        .groupId("consumer1")
-                        .date(consumeDate)
-                        .durationMs(this.computeDuration(sendDate1, consumeDate))
-                        .build();
-                Assertions.assertEquals(expectedConsume, consume, "Consume record C-ID1");
-                numberOfConsumerWithCorrelationIdChecked++;
-            } else if ("C-ID2".equals(consume.getCorrelationId())) {
-                final String consumeDate = consume.getDate();
-                final TracingValue expectedConsume = TracingValue.builder()
-                        .correlationId("C-ID2")
-                        .topic("test")
-                        .partition(1)
-                        .offset(3L)
-                        .type(TraceType.CONSUME)
-                        .clientId("consumer1-clientId")
-                        .groupId("consumer1")
-                        .date(consumeDate)
-                        .durationMs(this.computeDuration(sendDate2, consumeDate))
-                        .build();
-                Assertions.assertEquals(expectedConsume, consume, "Consume record C-ID2");
-                numberOfConsumerWithCorrelationIdChecked++;
-            } else {
-                //no correlation ID on send
-                final String consumeWithoutCorrelationIdDate = consume.getDate();
-                final TracingValue expectedConsumeWithoutCorrelationId = TracingValue.builder()
-                        .topic("test")
-                        .partition(1)
-                        .offset((long)numberOfConsumeWithoutCorrelationIdChecked)
-                        .type(TraceType.CONSUME)
-                        .clientId("consumer1-clientId")
-                        .groupId("consumer1")
-                        .date(consumeWithoutCorrelationIdDate)
-                        .build();
-                Assertions.assertEquals(expectedConsumeWithoutCorrelationId, consume, "Consume record " + numberOfConsumeWithoutCorrelationIdChecked  + " without correlationId on Send");
-                numberOfConsumeWithoutCorrelationIdChecked++;
-            }
-            recordNumber++;
-        }
-
-        Assertions.assertEquals(2, numberOfConsumerWithCorrelationIdChecked, "2 consumer with correlation must be checked");
-        Assertions.assertEquals(3, numberOfConsumerWithCorrelationIdChecked, "3 consumer without correlation must be checked");
-
-    }
-
-    private void consumeTopic(KafkaConsumer<String, String> consumer, final String topic, final int expectedRecordNumber) {
-        consumer.subscribe(List.of(topic));
-        final List<String> result = new LinkedList<>();
-        while (result.size() != expectedRecordNumber) {
-            final ConsumerRecords<String, String> records = consumer.poll(java.time.Duration.ofMillis(200));
-            records.forEach(record -> result.add(record.value()));
-        }
-        consumer.commitSync();
     }
 }

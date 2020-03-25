@@ -1,5 +1,6 @@
-package org.ianitrix.kafka;
+package org.ianitrix.kafka.utils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -8,9 +9,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.ianitrix.kafka.interceptors.AbstractTracingInterceptor;
+import org.ianitrix.kafka.TraceTopologyStreamBuilder;
 import org.ianitrix.kafka.interceptors.pojo.TracingValue;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.time.Duration;
