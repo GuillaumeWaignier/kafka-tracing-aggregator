@@ -222,7 +222,7 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
                 .clientId("consumer1-clientId")
                 .groupId("consumer1")
                 .date(commitDate2)
-                .durationMs(this.computeDuration(traceCorrelationId1.get(2).getDate(), commitDate2))
+                .durationMs(this.computeDuration(traceCorrelationId2.get(2).getDate(), commitDate2))
                 .build();
         Assertions.assertEquals(expectedCommit2, commit2, "Commit partition 1 -> record C-ID2");
     }
