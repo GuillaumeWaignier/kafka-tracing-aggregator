@@ -225,8 +225,5 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
                 .durationMs(this.computeDuration(traceCorrelationId1.get(2).getDate(), commitDate2))
                 .build();
         Assertions.assertEquals(expectedCommit2, commit2, "Commit partition 1 -> record C-ID2");
-
-
-
     }
 }
