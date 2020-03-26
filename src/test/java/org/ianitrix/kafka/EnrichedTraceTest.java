@@ -168,9 +168,7 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
                 .durationMs(this.computeDuration(sendDate1, consumeDate1))
                 .build();
         Assertions.assertEquals(expectedConsume1, consume1, "Consume record C-ID1");
-
-        //TODO check commit 1
-
+        Assertions.assertEquals(TraceType.COMMIT, traceCorrelationId1.get(3).getType(), "C-ID1 : second message = commit");
 
         //check All traces with correlationId C-ID2 (send, ack, consume, commit)
         Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.searchTraceByCorrelationId("C-ID2").size() == 4);
@@ -194,8 +192,39 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
                 .durationMs(this.computeDuration(sendDate2, consumeDate2))
                 .build();
         Assertions.assertEquals(expectedConsume2, consume2, "Consume record C-ID2");
+        Assertions.assertEquals(TraceType.COMMIT, traceCorrelationId2.get(3).getType(), "C-ID2 : second message = commit");
 
-        //TODO check commit 2
+        //check commit
+        // there is one commit for each partition
+        final TracingValue commit1 = traceCorrelationId1.get(3);
+        final String commitDate1 = commit1.getDate();
+        final TracingValue expectedCommit1 = TracingValue.builder()
+                .correlationId("C-ID1")
+                .topic("test")
+                .partition(0)
+                .offset(0L)
+                .type(TraceType.COMMIT)
+                .clientId("consumer1-clientId")
+                .groupId("consumer1")
+                .date(commitDate1)
+                .durationMs(this.computeDuration(traceCorrelationId1.get(2).getDate(), commitDate1))
+                .build();
+        Assertions.assertEquals(expectedCommit1, commit1, "Commit partition 0 -> record C-ID1");
+
+        final TracingValue commit2 = traceCorrelationId2.get(3);
+        final String commitDate2 = commit2.getDate();
+        final TracingValue expectedCommit2 = TracingValue.builder()
+                .correlationId("C-ID2")
+                .topic("test")
+                .partition(1)
+                .offset(3L)
+                .type(TraceType.COMMIT)
+                .clientId("consumer1-clientId")
+                .groupId("consumer1")
+                .date(commitDate2)
+                .durationMs(this.computeDuration(traceCorrelationId1.get(2).getDate(), commitDate2))
+                .build();
+        Assertions.assertEquals(expectedCommit2, commit2, "Commit partition 1 -> record C-ID2");
 
 
 
