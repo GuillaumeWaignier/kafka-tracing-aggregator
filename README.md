@@ -157,7 +157,7 @@ value:
 
 # Dashboard
 
-TODO
+![kibana dashboard](doc/kibana.png "kibana dashboard")
 
 # Test
 
@@ -185,3 +185,6 @@ Current bug : if there is no dashboard, do *docker-compose up -d* a second time 
 
 Then open [http://localhost:5601/](http://localhost:5601/) or [http://localhost:8080/](http://localhost:8080/)
 
+# Stream Topology
+
+![kafka stream topology](doc/topology.svg "kafka stream topology")
