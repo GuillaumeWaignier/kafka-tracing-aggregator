@@ -128,6 +128,25 @@ services:
       - ./dataTest/deployConnector.sh:/deployConnector.sh:ro
       - ./dataTest/connectorTrace.json:/body.json:ro
 
+
+  load-es-connector-raw:
+    image: "curlimages/curl:7.69.0"
+    hostname: curl
+    entrypoint:
+      - "/deployConnector.sh"
+      - "http://kafka-connect:8083"
+      - ""
+      - "body.json"
+    depends_on:
+      - kafka-connect
+      - elasticsearch
+    networks:
+      - confluent
+    restart: on-failure
+    volumes:
+      - ./dataTest/deployConnector.sh:/deployConnector.sh:ro
+      - ./dataTest/connectorRawTrace.json:/body.json:ro
+
   kafkahq:
     image: tchiotludo/kafkahq:0.12.0
     container_name: kafkahq

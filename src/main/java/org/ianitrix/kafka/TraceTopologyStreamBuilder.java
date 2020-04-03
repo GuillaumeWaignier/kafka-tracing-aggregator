@@ -2,6 +2,7 @@ package org.ianitrix.kafka;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.serialization.Serde;
+import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
@@ -50,30 +51,34 @@ public class TraceTopologyStreamBuilder {
                 StreamJoined.with(tracingKeySerde, tracingValueSerde, tracingValueSerde).withName("send")
         );
         final KStream<TracingKey, TracingValue> enrichedSend = enrichedSendWithCorrelationIdKey.selectKey(this::createTopicPartitionOffsetKey);
-        enrichedSend.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
+        enrichedSend.selectKey((tracingKey, tracingValue) -> tracingValue.getId())
+                .to(OUTPUT_TRACE_TOPIC, Produced.with(Serdes.String(), tracingValueSerde));
 
         //ack
         final KStream<TracingKey, TracingValue> enrichedAck = ackTraceStream.join(enrichedSend,
                 this::enrichAck,
                 JoinWindows.of(Duration.ofMinutes(2)),
                 StreamJoined.with(tracingKeySerde, tracingValueSerde, tracingValueSerde).withName("ack"));
-        enrichedAck.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
+        enrichedAck.selectKey((tracingKey, tracingValue) -> tracingValue.getId())
+                .to(OUTPUT_TRACE_TOPIC, Produced.with(Serdes.String(), tracingValueSerde));
 
         //commit
         final KStream<TracingKey, TracingValue> enrichedCommit = commitTraceStream.join(consumeTraceStream,
                 this::enrichCommit,
                 JoinWindows.of(Duration.ofMinutes(6)),
                 StreamJoined.with(tracingKeySerde, tracingValueSerde, tracingValueSerde).withName("commit"));
-        enrichedCommit.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
+        enrichedCommit.selectKey((tracingKey, tracingValue) -> tracingValue.getId())
+                .to(OUTPUT_TRACE_TOPIC, Produced.with(Serdes.String(), tracingValueSerde));
 
         // consume
         final KStream<TracingKey, TracingValue> enrichedConsume = consumeTraceStream
                 .selectKey(this::createTopicPartitionOffsetKey)
-                .join(enrichedSend,
+                .leftJoin(enrichedSend,
                 this::enrichConsume,
                 JoinWindows.of(Duration.ofDays(1)),
                 StreamJoined.with(tracingKeySerde, tracingValueSerde, tracingValueSerde).withName("consume"));
-        enrichedConsume.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
+        enrichedConsume.selectKey((tracingKey, tracingValue) -> tracingValue.getId())
+                .to(OUTPUT_TRACE_TOPIC, Produced.with(Serdes.String(), tracingValueSerde));
 
         return builder.build();
     }
@@ -104,6 +109,10 @@ public class TraceTopologyStreamBuilder {
 
     private TracingValue enrichConsume(final TracingValue consume, final TracingValue send) {
 
+        if (send == null) {
+            // send is performed too far in the past, so it is delete : do not compute duration for consume
+            return consume;
+        }
         final Duration duration = Duration.between(Instant.parse(send.getDate()), Instant.parse(consume.getDate()));
         consume.setDurationMs(duration.toMillis());
 
