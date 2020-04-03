@@ -180,8 +180,6 @@ This docker-compose file start kafka connect, Elasticsearch and Kibana.
 Then, it will start a connector that indexes aggregated trace inside Elasticsearch.
 It will also load the Elasticsearch dashboard 
 
-Current bug : if there is no dashboard, do *docker-compose up -d* a second time when kibana is started.
-
 
 Then open [http://localhost:5601/](http://localhost:5601/) or [http://localhost:8080/](http://localhost:8080/)
 

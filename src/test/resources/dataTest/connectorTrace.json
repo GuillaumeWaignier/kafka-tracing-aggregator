@@ -1,0 +1,19 @@
+{
+  "name":"aggregatedTrace",
+  "config": {
+    "connector.class":"ElasticsearchSinkConnector",
+    "name":"aggregatedTrace",
+    "connection.url":"http://elasticsearch:9200",
+    "type.name":"trace",
+    "topics":"_aggregatedTrace",
+    "auto.create.indices.at.start": false,
+    "key.ignore": "true",
+    "schema.ignore":true,
+    "transforms":"topic",
+    "transforms.topic.regex":".*",
+    "transforms.topic.type":"org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.topic.replacement":"trace",
+    "errors.tolerance":"none",
+    "errors.retry.timeout":-1
+  }
+}

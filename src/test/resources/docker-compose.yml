@@ -12,13 +12,21 @@ services:
   elasticsearch:
     image: "elasticsearch:${ELASTIC_VERSION}"
     hostname: elasticsearch
+    ports:
+      - 9200:9200
+    healthcheck:
+      test: test `curl -s -o /dev/null -w "%{http_code}" http://localhost:9200/_cluster/health` = 200
+      interval: 2s
+      timeout: 2s
+      retries: 10
+      start_period: 2s
     environment:
       - node.name=elasticsearch
       - cluster.name=es-docker-cluster
       - discovery.seed_hosts=elasticsearch
       - cluster.initial_master_nodes=elasticsearch
       - bootstrap.memory_lock=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
     networks:
       - elastic
 
@@ -50,109 +58,97 @@ services:
       - elastic
 
   kafka-connect:
-    image: "confluentinc/cp-kafka-connect:${CONFLUENT_VERSION}"
+    image: "ianitrix/kafka:${CONFLUENT_VERSION}"
+    command: connect-distributed
     hostname: kafka-connect
     ports:
       - 8083:8083
     networks:
       - elastic
+    healthcheck:
+      test: test `curl -s -o /dev/null -w "%{http_code}" http://localhost:8083/connectors` = 200
+      interval: 2s
+      timeout: 2s
+      retries: 10
+      start_period: 2s
     environment:
-      - "KAFKA_HEAP_OPTS=-Xms512m -Xmx512m"
-      - "CONNECT_BOOTSTRAP_SERVERS=kafka:9092"
-      - "CONNECT_REST_PORT=8083"
-      - "CONNECT_GROUP_ID=connect"
-      - "CONNECT_CONFIG_STORAGE_TOPIC=_connect-config"
-      - "CONNECT_OFFSET_STORAGE_TOPIC=_connect-offsets"
-      - "CONNECT_STATUS_STORAGE_TOPIC=_connect-status"
-      - "CONNECT_REPLICATION_FACTOR=1"
-      - "CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR=1"
-      - "CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR=1"
-      - "CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=1"
-      - "CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter"
-      - "CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter"
-      - "CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=false"
-      - "CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=false"
-      - "CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081"
-      - "CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081"
-      - "CONNECT_INTERNAL_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter"
-      - "CONNECT_INTERNAL_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter"
-      - "CONNECT_REST_ADVERTISED_HOST_NAME=kafka-connect"
-      - "CONNECT_PLUGIN_PATH=/usr/share/java"
-      - "CONNECT_LOG4J_ROOT_LOGLEVEL=INFO"
-      -  "CONNECT_LOG4J_LOGGERS=org.reflections=ERROR"
+      - KAFKA_OPTS=-Xms512m -Xmx512m
+      - KAFKA_bootstrap_servers=kafka:9092
+      - KAFKA_rest_port=8083
+      - KAFKA_group_id=connect
+      - KAFKA_config_storage_topic=_connect-config
+      - KAFKA_offset_storage_topic=_connect-offsets
+      - KAFKA_status_storage_topic=_connect-status
+      - KAFKA_replication_factor=1
+      - KAFKA_config_storage_replication_factor=1
+      - KAFKA_offset_storage_replication_factor=1
+      - KAFKA_status_storage_replication_factor=1
+      - KAFKA_key_converter=org.apache.kafka.connect.json.JsonConverter
+      - KAFKA_value_converter=org.apache.kafka.connect.json.JsonConverter
+      - KAFKA_key_converter_schemas_enable=false
+      - KAFKA_value_converter_schemas_enable=false
+      - KAFKA_internal_key_converter=org.apache.kafka.connect.json.JsonConverter
+      - KAFKA_internal_value_converter=org.apache.kafka.connect.json.JsonConverter
+      - KAFKA_rest_advertised_host_name=kafka-connect
+      - KAFKA_plugin_path=/confluent-${CONFLUENT_VERSION}/share/java
+      - KAFKA_log4j_root_loglevel=INFO
+      - KAFKA_log4j_loggers=org.reflections=ERROR
     restart: on-failure
 
   load-es-connector-trace:
     image: "curlimages/curl:7.69.0"
     hostname: curl
-    command: >
-      curl -XPOST -H "Content-Type: application/json" http://kafka-connect:8083/connectors -d '
-        {
-           "name":"aggregatedTrace",
-           "config": {
-             "connector.class":"ElasticsearchSinkConnector",
-             "name":"aggregatedTrace",
-             "connection.url":"http://elasticsearch:9200",
-             "type.name":"trace",
-             "topics":"_aggregatedTrace",
-             "auto.create.indices.at.start": false,
-             "key.ignore": "true",
-             "schema.ignore":true,
-             "transforms":"topic",
-             "transforms.topic.regex":".*",
-             "transforms.topic.type":"org.apache.kafka.connect.transforms.RegexRouter",
-             "transforms.topic.replacement":"trace",
-             "errors.tolerance":"none",
-             "errors.retry.timeout":-1
-           }}'
+    entrypoint:
+      - "/deployConnector.sh"
+      - "http://kafka-connect:8083"
+      - ""
+      - "body.json"
     depends_on:
       - kafka-connect
+      - elasticsearch
     networks:
       - elastic
     restart: on-failure
+    volumes:
+      - ./dataTest/deployConnector.sh:/deployConnector.sh:ro
+      - ./dataTest/connectorTrace.json:/body.json:ro
 
   load-es-connector-raw:
     image: "curlimages/curl:7.69.0"
     hostname: curl
-    command: >
-      curl -XPOST -H "Content-Type: application/json" http://kafka-connect:8083/connectors -d '
-        {
-           "name":"rawTrace",
-           "config": {
-             "connector.class":"ElasticsearchSinkConnector",
-             "name":"rawTrace",
-             "connection.url":"http://elasticsearch:9200",
-             "type.name":"trace",
-             "topics":"_tracing",
-             "auto.create.indices.at.start": false,
-             "key.ignore": "true",
-             "schema.ignore":true,
-             "transforms":"topic",
-             "transforms.topic.regex":".*",
-             "transforms.topic.type":"org.apache.kafka.connect.transforms.RegexRouter",
-             "transforms.topic.replacement":"rawTrace",
-             "errors.tolerance":"none",
-             "errors.retry.timeout":-1
-           }}'
+    entrypoint:
+      - "/deployConnector.sh"
+      - "http://kafka-connect:8083"
+      - ""
+      - "body.json"
     depends_on:
       - kafka-connect
+      - elasticsearch
     networks:
       - elastic
     restart: on-failure
+    volumes:
+      - ./dataTest/deployConnector.sh:/deployConnector.sh:ro
+      - ./dataTest/connectorRawTrace.json:/body.json:ro
 
   load-kibana-dashboard:
     image: "curlimages/curl:7.69.0"
     hostname: curl
-    command: "curl -X POST 'http://kibana:5601/api/saved_objects/_import' -H 'kbn-xsrf: true' --form file=@kibana.ndjson"
+    entrypoint:
+      - "/deployDashboard.sh"
+      - "http://kibana:5601"
+      - "/kibana.ndjson"
     depends_on:
       - kibana
     networks:
       - elastic
     restart: on-failure
     volumes:
-      - ./kibana.ndjson:/kibana.ndjson:ro
+      - ./dataTest/deployDashboard.sh:/deployDashboard.sh:ro
+      - ./dataTest/kibana.ndjson:/kibana.ndjson:ro
 
 networks:
   elastic:
     external:
       name: confluent
+
