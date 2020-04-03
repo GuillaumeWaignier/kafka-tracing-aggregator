@@ -7,13 +7,16 @@
     "type.name":"trace",
     "topics":"_aggregatedTrace",
     "auto.create.indices.at.start": false,
-    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
     "key.ignore": "false",
     "schema.ignore":true,
-    "transforms":"topic",
+    "transforms":"topic,valueToKey,extractKey",
     "transforms.topic.regex":".*",
     "transforms.topic.type":"org.apache.kafka.connect.transforms.RegexRouter",
     "transforms.topic.replacement":"trace",
+    "transforms.valueToKey.type":"org.apache.kafka.connect.transforms.ValueToKey",
+    "transforms.valueToKey.fields":"id",
+    "transforms.extractKey.type":"org.apache.kafka.connect.transforms.ExtractField$Key",
+    "transforms.extractKey.field":"id",
     "errors.tolerance":"none",
     "errors.retry.timeout":-1
   }

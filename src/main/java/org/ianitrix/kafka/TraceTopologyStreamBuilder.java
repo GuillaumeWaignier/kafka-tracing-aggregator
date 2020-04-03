@@ -51,24 +51,21 @@ public class TraceTopologyStreamBuilder {
                 StreamJoined.with(tracingKeySerde, tracingValueSerde, tracingValueSerde).withName("send")
         );
         final KStream<TracingKey, TracingValue> enrichedSend = enrichedSendWithCorrelationIdKey.selectKey(this::createTopicPartitionOffsetKey);
-        enrichedSend.selectKey((tracingKey, tracingValue) -> tracingValue.getId())
-                .to(OUTPUT_TRACE_TOPIC, Produced.with(Serdes.String(), tracingValueSerde));
+        enrichedSend.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
 
         //ack
         final KStream<TracingKey, TracingValue> enrichedAck = ackTraceStream.join(enrichedSend,
                 this::enrichAck,
                 JoinWindows.of(Duration.ofMinutes(2)),
                 StreamJoined.with(tracingKeySerde, tracingValueSerde, tracingValueSerde).withName("ack"));
-        enrichedAck.selectKey((tracingKey, tracingValue) -> tracingValue.getId())
-                .to(OUTPUT_TRACE_TOPIC, Produced.with(Serdes.String(), tracingValueSerde));
+        enrichedAck.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
 
         //commit
         final KStream<TracingKey, TracingValue> enrichedCommit = commitTraceStream.join(consumeTraceStream,
                 this::enrichCommit,
                 JoinWindows.of(Duration.ofMinutes(6)),
                 StreamJoined.with(tracingKeySerde, tracingValueSerde, tracingValueSerde).withName("commit"));
-        enrichedCommit.selectKey((tracingKey, tracingValue) -> tracingValue.getId())
-                .to(OUTPUT_TRACE_TOPIC, Produced.with(Serdes.String(), tracingValueSerde));
+        enrichedCommit.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
 
         // consume
         final KStream<TracingKey, TracingValue> enrichedConsume = consumeTraceStream
@@ -77,8 +74,7 @@ public class TraceTopologyStreamBuilder {
                 this::enrichConsume,
                 JoinWindows.of(Duration.ofDays(1)),
                 StreamJoined.with(tracingKeySerde, tracingValueSerde, tracingValueSerde).withName("consume"));
-        enrichedConsume.selectKey((tracingKey, tracingValue) -> tracingValue.getId())
-                .to(OUTPUT_TRACE_TOPIC, Produced.with(Serdes.String(), tracingValueSerde));
+        enrichedConsume.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
 
         return builder.build();
     }
