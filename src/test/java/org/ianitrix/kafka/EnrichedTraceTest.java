@@ -46,10 +46,15 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
         subTestSecondSend();
 
         subTestConsume();
+        subTestConsumeWithNoSendTrace();
     }
 
 
-
+    /**
+     * Test the enriched SEND and ACK.
+     * @throws ExecutionException
+     * @throws InterruptedException
+     */
     private void subTestFirstSend() throws ExecutionException, InterruptedException {
         //send record
         this.sendRecord("test", 0, "C-ID1");
@@ -96,13 +101,18 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
     }
 
 
-
+    /**
+     * Test enriched SEND and ACK when there is already some send, ack with and without trace.
+     * @throws ExecutionException
+     * @throws InterruptedException
+     */
     private void subTestSecondSend() throws ExecutionException, InterruptedException {
 
         //send all without correlationId
         this.sendRecord("test", 1);
         this.sendRecord("test", 1);
         this.sendRecord("test", 1);
+        Thread.sleep(1);
         //send all with correlationId
         this.sendRecord("test", 1, "C-ID2");
 
@@ -147,9 +157,10 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
         Assertions.assertEquals(expectedAck, ack, "Ack record C-ID2");
     }
 
+    /**
+     * Test the enriched CONSUME and COMMIT when the SEND trace exists.
+     */
     private void subTestConsume() {
-
-        //TODO: current version: if the send trace is not inside _tracing, the consume is lost because of 'inner join'
 
         consumeTopic(consumer1, "test", 5);
 
@@ -244,5 +255,93 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
                 .durationMs(this.computeDuration(traceCorrelationId2.get(2).getDate(), commitDate2))
                 .build();
         Assertions.assertEquals(expectedCommit2, commit2, "Commit partition 1 -> record C-ID2");
+    }
+
+    /**
+     * Test the enriched CONSUME when the SEND trace do not exist.
+     */
+    private void subTestConsumeWithNoSendTrace() {
+        //assert for partition 1
+        final List<TracingValue> traceConsumePartition1 = elasticsearchClient.multiSearch("trace", "type.keyword", TraceType.CONSUME.toString(), "partition","1");
+        final List<TracingValue> rawTraceConsumePartition1 =  elasticsearchClient.multiSearch("trace", "type.keyword", TraceType.CONSUME.toString(), "partition","1");
+
+
+        Assertions.assertEquals(4, traceConsumePartition1.size(), "There are 4 consume in partition 1");
+        Assertions.assertNotEquals("C-ID1", traceConsumePartition1.get(0).getCorrelationId(),"first message: no C-ID1");
+        Assertions.assertNotEquals("C-ID2", traceConsumePartition1.get(0).getCorrelationId(),"first message: no C-ID2");
+        Assertions.assertNotEquals("C-ID1", traceConsumePartition1.get(1).getCorrelationId(),"second message: no C-ID1");
+        Assertions.assertNotEquals("C-ID2", traceConsumePartition1.get(1).getCorrelationId(),"second message: no C-ID2");
+        Assertions.assertNotEquals("C-ID1", traceConsumePartition1.get(2).getCorrelationId(),"third message: no C-ID1");
+        Assertions.assertNotEquals("C-ID2", traceConsumePartition1.get(2).getCorrelationId(),"third message: no C-ID2");
+        Assertions.assertEquals("C-ID2", traceConsumePartition1.get(3).getCorrelationId(),"4th message: is C-ID2");
+
+
+        // consume 1
+        final TracingValue consume1 = traceConsumePartition1.get(0);
+        final String consumeDate1 = rawTraceConsumePartition1.get(0).getDate();
+        final TracingValue expectedConsume1 = TracingValue.builder()
+                .id(rawTraceConsumePartition1.get(0).getId())
+                .correlationId(rawTraceConsumePartition1.get(0).getCorrelationId())
+                .topic("test")
+                .partition(1)
+                .offset(0L)
+                .type(TraceType.CONSUME)
+                .clientId("consumer1-clientId")
+                .groupId("consumer1")
+                .date(consumeDate1)
+                .build();
+        Assertions.assertEquals(expectedConsume1, consume1, "Consume record 1 with no SEND trace");
+
+        // consume 2
+        final TracingValue consume2 = traceConsumePartition1.get(1);
+        final String consumeDate2 = rawTraceConsumePartition1.get(1).getDate();
+        final TracingValue expectedConsume2 = TracingValue.builder()
+                .id(rawTraceConsumePartition1.get(1).getId())
+                .correlationId(rawTraceConsumePartition1.get(1).getCorrelationId())
+                .topic("test")
+                .partition(1)
+                .offset(1L)
+                .type(TraceType.CONSUME)
+                .clientId("consumer1-clientId")
+                .groupId("consumer1")
+                .date(consumeDate2)
+                .build();
+        Assertions.assertEquals(expectedConsume2, consume2, "Consume record 2 with no SEND trace");
+
+        // consume 3
+        final TracingValue consume3 = traceConsumePartition1.get(2);
+        final String consumeDate3 = rawTraceConsumePartition1.get(2).getDate();
+        final TracingValue expectedConsume3 = TracingValue.builder()
+                .id(rawTraceConsumePartition1.get(2).getId())
+                .correlationId(rawTraceConsumePartition1.get(2).getCorrelationId())
+                .topic("test")
+                .partition(1)
+                .offset(2L)
+                .type(TraceType.CONSUME)
+                .clientId("consumer1-clientId")
+                .groupId("consumer1")
+                .date(consumeDate3)
+                .build();
+        Assertions.assertEquals(expectedConsume3, consume3, "Consume record 3 with no SEND trace");
+
+        // consume 4 with C-ID2
+        final TracingValue rawTraceSendCorrelationId2 =  elasticsearchClient.searchRawTraceByTypeAndCorrelationId(TraceType.SEND, "C-ID2").get(0);
+        final TracingValue consume4 = traceConsumePartition1.get(3);
+        final String consumeDate4 = rawTraceConsumePartition1.get(3).getDate();
+        final TracingValue expectedConsume4 = TracingValue.builder()
+                .id(rawTraceConsumePartition1.get(3).getId())
+                .correlationId("C-ID2")
+                .topic("test")
+                .partition(1)
+                .offset(3L)
+                .type(TraceType.CONSUME)
+                .clientId("consumer1-clientId")
+                .groupId("consumer1")
+                .date(consumeDate4)
+                .durationMs(this.computeDuration(rawTraceSendCorrelationId2.getDate(), consumeDate4))
+                .build();
+        Assertions.assertEquals(expectedConsume4, consume4, "Consume record 4 with SEND trace (duration and C-ID2)");
+
+
     }
 }
