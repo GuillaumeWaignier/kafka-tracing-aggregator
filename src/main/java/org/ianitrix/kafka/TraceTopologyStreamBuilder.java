@@ -2,10 +2,10 @@ package org.ianitrix.kafka;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.serialization.Serde;
-import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
+import org.apache.kafka.streams.state.Stores;
 import org.ianitrix.kafka.interceptors.AbstractTracingInterceptor;
 import org.ianitrix.kafka.interceptors.pojo.TraceType;
 import org.ianitrix.kafka.interceptors.pojo.TracingKey;
@@ -31,12 +31,10 @@ public class TraceTopologyStreamBuilder {
 
         final KStream<TracingKey, TracingValue>[] splittedStream = tracesStream.branch(Named.as("splitByType"),(tracingKey, tracingValue) -> tracingValue.getType().equals(TraceType.SEND),
                 (tracingKey, tracingValue) -> tracingValue.getType().equals(TraceType.ACK),
-                (tracingKey, tracingValue) -> tracingValue.getType().equals(TraceType.CONSUME),
-                (tracingKey, tracingValue) -> tracingValue.getType().equals(TraceType.COMMIT));
+                (tracingKey, tracingValue) -> tracingValue.getType().equals(TraceType.CONSUME));
         final KStream<TracingKey, TracingValue> sendTraceStream = splittedStream[0];
         final KStream<TracingKey, TracingValue> ackTraceStream = splittedStream[1];
         final KStream<TracingKey, TracingValue> consumeTraceStream = splittedStream[2];
-        final KStream<TracingKey, TracingValue> commitTraceStream = splittedStream[3];
 
 
         // Stream for all messages
@@ -61,10 +59,10 @@ public class TraceTopologyStreamBuilder {
         enrichedAck.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
 
         //commit
-        final KStream<TracingKey, TracingValue> enrichedCommit = commitTraceStream.join(consumeTraceStream,
-                this::enrichCommit,
-                JoinWindows.of(Duration.ofMinutes(6)),
-                StreamJoined.with(tracingKeySerde, tracingValueSerde, tracingValueSerde).withName("commit"));
+        builder.addStateStore(
+                Stores.keyValueStoreBuilder(
+                        Stores.persistentKeyValueStore(CommitMerger.CONSUME_STORE_NAME), tracingKeySerde, tracingValueSerde));
+        final KStream<TracingKey, TracingValue> enrichedCommit = tracesStream.transform(() -> new CommitMerger(), Named.as("commit"), CommitMerger.CONSUME_STORE_NAME);
         enrichedCommit.to(OUTPUT_TRACE_TOPIC, Produced.with(tracingKeySerde, tracingValueSerde));
 
         // consume
@@ -116,7 +114,15 @@ public class TraceTopologyStreamBuilder {
     }
 
     private TracingValue enrichCommit(final TracingValue commit, final TracingValue consume) {
+
+        // for example when offset = -1, or when the client set change the offset (there is no duration)
+        if (consume == null) {
+            return commit;
+        }
+
         commit.setCorrelationId(consume.getCorrelationId());
+
+        log.info("&&&&&&&&&&& fusion {}  &&&&&& {} ", consume, commit);
 
         final Duration duration = Duration.between(Instant.parse(consume.getDate()), Instant.parse(commit.getDate()));
         commit.setDurationMs(duration.toMillis());

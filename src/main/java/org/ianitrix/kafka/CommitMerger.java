@@ -14,10 +14,14 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 
-public class AckMerger implements Transformer<TracingKey, TracingValue, KeyValue<TracingKey, TracingValue>> {
+public class CommitMerger implements Transformer<TracingKey, TracingValue, KeyValue<TracingKey, TracingValue>> {
 
     public static final String CONSUME_STORE_NAME = "consume";
 
+    /**
+     * Contains all consumes
+     * Key is : topic, partition, offset, groupId
+     */
     private KeyValueStore<TracingKey, TracingValue> consumeStore;
 
     @Override
@@ -41,8 +45,6 @@ public class AckMerger implements Transformer<TracingKey, TracingValue, KeyValue
             }
 
             value.setCorrelationId(consume.getCorrelationId());
-
-            //log.info("&&&&&&&&&&& fusion {}  &&&&&& {} ", consume, commit);
 
             final Duration duration = Duration.between(Instant.parse(consume.getDate()), Instant.parse(value.getDate()));
             value.setDurationMs(duration.toMillis());
