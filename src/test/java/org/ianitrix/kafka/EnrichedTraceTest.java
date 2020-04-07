@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.awaitility.Duration;
 import org.ianitrix.kafka.interceptors.pojo.TraceType;
+import org.ianitrix.kafka.interceptors.pojo.TracingKey;
 import org.ianitrix.kafka.interceptors.pojo.TracingValue;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
@@ -16,7 +17,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 @Testcontainers
@@ -47,6 +51,8 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
 
         subTestConsume();
         subTestConsumeWithNoSendTrace();
+
+        subTestOverConsumption();
     }
 
 
@@ -343,5 +349,111 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
         Assertions.assertEquals(expectedConsume4, consume4, "Consume record 4 with SEND trace (duration and C-ID2)");
 
 
+    }
+
+    /**
+     * Test the enriched CONSUME and COMMIT when there is over-consumption.
+     */
+    private void subTestOverConsumption() {
+
+        consumeTopic(consumer2, "test", 5);
+        consumer2.seekToBeginning(consumer2.assignment());
+        consumeTopic(consumer2, "test", 5);
+
+        //check All traces with consume and clientId=consumer2-clientId
+        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.multiSearch("rawtrace", "type.keyword", TraceType.CONSUME.toString(), "clientId.keyword","consumer2-clientId").size() == 10);
+        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.multiSearch("trace", "type.keyword", TraceType.CONSUME.toString(), "clientId.keyword","consumer2-clientId").size() == 10);
+
+        //assert consume
+        final List<TracingValue> traceConsume =  elasticsearchClient.multiSearch("trace", "type.keyword", TraceType.CONSUME.toString(), "clientId.keyword","consumer2-clientId");
+
+        final Map<TracingKey, List<TracingValue>> consumeTraceByKey = new HashMap<>();
+
+        for (final TracingValue consume : traceConsume) {
+
+            final TracingKey key = TracingKey.builder()
+                    .topic(consume.getTopic())
+                    .partition(consume.getPartition())
+                    .offset(consume.getOffset())
+                    .build();
+            final List<TracingValue> traceWithGivenKey = consumeTraceByKey.getOrDefault(key, new LinkedList<>());
+            traceWithGivenKey.add(consume);
+            consumeTraceByKey.put(key, traceWithGivenKey);
+
+            final String traceId = consume.getId();
+            final TracingValue rawTrace = elasticsearchClient.multiSearch("rawtrace", "type.keyword", TraceType.CONSUME.toString(), "id.keyword",traceId).get(0);
+            final List<TracingValue> send = elasticsearchClient.multiSearch("rawtrace", "type.keyword", TraceType.SEND.toString(), "correlationId.keyword", rawTrace.getCorrelationId());
+            String sendDate = null;
+            if (!send.isEmpty()) {
+                sendDate = send.get(0).getDate();
+            }
+
+            final TracingValue expectedConsume = TracingValue.builder()
+                    .id(traceId)
+                    .correlationId(rawTrace.getCorrelationId())
+                    .topic("test")
+                    .partition(rawTrace.getPartition())
+                    .offset(rawTrace.getOffset())
+                    .type(TraceType.CONSUME)
+                    .clientId("consumer2-clientId")
+                    .groupId("consumer2")
+                    .date(rawTrace.getDate())
+                    .build();
+            if (sendDate != null) {
+                expectedConsume.setDurationMs(this.computeDuration(sendDate, rawTrace.getDate()));
+            }
+            Assertions.assertEquals(expectedConsume, consume, "Consume record trace with id " + traceId);
+        }
+
+        // There must be 2 consume for each tuple (topic, partition, offset)
+        Assertions.assertEquals(5, consumeTraceByKey.size(), "There is 5 different records");
+        for(final TracingKey key : consumeTraceByKey.keySet()) {
+            Assertions.assertEquals(2, consumeTraceByKey.get(key).size(), "There is 2 consume for the key " + key);
+        }
+
+
+
+        // check commit
+        final List<TracingValue> traceCommit =  elasticsearchClient.multiSearch("trace", "type.keyword", TraceType.COMMIT.toString(), "clientId.keyword","consumer2-clientId");
+
+        final Map<TracingKey, Integer> positionOfConsumeByKey = new HashMap<>();
+        consumeTraceByKey.forEach((tracingKey, tracingValues) -> positionOfConsumeByKey.put(tracingKey, 0));
+
+        for (final TracingValue commit : traceCommit) {
+            final String traceId = commit.getId();
+            final TracingValue rawTrace = elasticsearchClient.multiSearch("rawtrace", "type.keyword", TraceType.COMMIT.toString(), "id.keyword",traceId).get(0);
+
+            final TracingKey key = TracingKey.builder()
+                    .topic(commit.getTopic())
+                    .partition(commit.getPartition())
+                    .offset(commit.getOffset())
+                    .build();
+
+            final TracingValue expectedCommit = TracingValue.builder()
+                    .id(traceId)
+                    .correlationId(commit.getCorrelationId())
+                    .topic("test")
+                    .partition(rawTrace.getPartition())
+                    .offset(rawTrace.getOffset())
+                    .type(TraceType.COMMIT)
+                    .clientId("consumer2-clientId")
+                    .groupId("consumer2")
+                    .date(rawTrace.getDate())
+                    .build();
+
+            // Find associated consume
+            if (commit.getOffset() == -1) {
+                //there is no associated consume
+                log.info("Commit {} has no associated consume", commit);
+            } else {
+                final Integer pos = positionOfConsumeByKey.get(key);
+                final TracingValue consume = consumeTraceByKey.get(key).get(pos);
+                log.info("Commit {} is associated with consumme {} at position {}", commit, consume, pos);
+                positionOfConsumeByKey.put(key, pos + 1);
+                expectedCommit.setDurationMs(this.computeDuration(consume.getDate(), rawTrace.getDate()));
+            }
+
+            Assertions.assertEquals(expectedCommit, commit, "Commit record trace with key " + key + " and id " + traceId);
+        }
     }
 }
