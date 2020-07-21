@@ -3,12 +3,12 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>org.ianitrix.kafka</groupId>
-	<artifactId>tracing-aggregator</artifactId>
+	<groupId>org.ianitrix</groupId>
+	<artifactId>kafka-tracing-aggregator</artifactId>
 	<version>0.0.2-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>kstream-examples</name>
+	<name>kafka-tracing-aggregator</name>
 	<url>https://github.com/GuillaumeWaignier/kafka-tracing-aggregator</url>
 
 	<properties>
