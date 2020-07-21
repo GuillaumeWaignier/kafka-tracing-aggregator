@@ -1,6 +1,8 @@
 # kafka-tracing-aggregator
 
-[![Build status](https://travis-ci.org/GuillaumeWaignier/kafka-tracing-aggregator.svg?branch=master)](https://travis-ci.org/GuillaumeWaignier/kafka-tracing-aggregator)
+![Build](https://github.com/GuillaumeWaignier/kafka-tracing-aggregator/workflows/Build/badge.svg?branch=master)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=GuillaumeWaignier_kafka-tracing-aggregator&metric=alert_status)](https://sonarcloud.io/dashboard?id=GuillaumeWaignier_kafka-tracing-aggregator)
+
 
 Aggregate Kafka traces produced by the [trace interceptor](https://github.com/GuillaumeWaignier/kafka-tracing-interceptors) in order to:
 * Enrich each trace with topic, partition, offset and correlationId 
