@@ -14,6 +14,14 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<source.version>11</source.version>
+		
+		<!-- SonarCloud Configuration -->
+		<sonar.java.source>11</sonar.java.source>
+		<sonar.java.target>11</sonar.java.target>
+		<sonar.projectKey>GuillaumeWaignier_kafka-tracing-aggregator</sonar.projectKey>
+		<sonar.organization>guillaumewaignier-github</sonar.organization>
+		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 
 		<maven-assembly-plugin.version>3.1.1</maven-assembly-plugin.version>
 		<maven-compiler-plugin.version>3.8.0</maven-compiler-plugin.version>
