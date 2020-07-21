@@ -24,7 +24,7 @@
 		<maven-surefire-plugin.version>2.22.1</maven-surefire-plugin.version>
 		<mockito.version>2.27.0</mockito.version>
 
-		<tracing-interceptors.version>0.0.1-SNAPSHOT</tracing-interceptors.version>
+		<tracing-interceptors.version>0.0.1</tracing-interceptors.version>
 
 		<!-- dependency versions -->
 		<awaitility.version>3.1.6</awaitility.version>
@@ -67,8 +67,8 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.ianitrix.kafka</groupId>
-			<artifactId>tracing-interceptors</artifactId>
+			<groupId>org.ianitrix</groupId>
+			<artifactId>kafka-tracing-interceptors</artifactId>
 			<version>${tracing-interceptors.version}</version>
 		</dependency>
 
