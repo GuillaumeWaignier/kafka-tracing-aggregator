@@ -22,7 +22,22 @@ jobs:
     - uses: actions/checkout@v2
       with:
          fetch-depth: 0
-
+     
+    # Cache docker image
+    - name: Cache Docker image
+      uses: actions/cache@v2
+      with:
+         path: /var/lib/docker/image/overlay2
+         key: ${{ runner.os }}-docker-${{ hashFiles('/var/lib/docker/image/overlay2/repositories.json') }}
+         restore-keys: |
+           ${{ runner.os }}-docker-
+    
+    # Java
+    - name: Set up JDK 11
+      uses: actions/setup-java@v1
+      with:
+         java-version: 11
+         
     # Cache maven repo
     - name: Cache local Maven repository
       uses: actions/cache@v2
@@ -31,12 +46,6 @@ jobs:
          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
          restore-keys: |
            ${{ runner.os }}-maven-
-    
-    # Java
-    - name: Set up JDK 11
-      uses: actions/setup-java@v1
-      with:
-         java-version: 11
      
     # Add host to /etc/hosts
     - name: Add hosts to /etc/hosts
