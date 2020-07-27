@@ -2,7 +2,6 @@ package org.ianitrix.kafka;
 
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
-import org.awaitility.Duration;
 import org.ianitrix.kafka.interceptors.pojo.TraceType;
 import org.ianitrix.kafka.interceptors.pojo.TracingKey;
 import org.ianitrix.kafka.interceptors.pojo.TracingValue;
@@ -17,6 +16,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -66,8 +66,8 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
         this.sendRecord("test", 0, "C-ID1");
 
         //check trace
-        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.numberOfTraces() == 2);
-        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.numberOfRawTraces() == 2);
+        Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> elasticsearchClient.numberOfTraces() == 2);
+        Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> elasticsearchClient.numberOfRawTraces() == 2);
 
         //assert
         final List<TracingValue> sends = elasticsearchClient.searchTraceByType(TraceType.SEND);
@@ -123,8 +123,8 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
         this.sendRecord("test", 1, "C-ID2");
 
         //check trace
-        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.numberOfTraces() == 4);
-        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.numberOfRawTraces() == 4);
+        Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> elasticsearchClient.numberOfTraces() == 4);
+        Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> elasticsearchClient.numberOfRawTraces() == 4);
 
         //assert
         final List<TracingValue> sends = elasticsearchClient.searchTraceByType(TraceType.SEND);
@@ -171,8 +171,8 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
         consumeTopic(consumer1, "test", 5);
 
         //check All traces with correlationId C-ID1 (send, ack, consume, commit)
-        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.searchTraceByCorrelationId("C-ID1").size() == 4);
-        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.searchRawTraceByTypeAndCorrelationId(TraceType.CONSUME, "C-ID1").size() == 1);
+        Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> elasticsearchClient.searchTraceByCorrelationId("C-ID1").size() == 4);
+        Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> elasticsearchClient.searchRawTraceByTypeAndCorrelationId(TraceType.CONSUME, "C-ID1").size() == 1);
 
         //assert
         final List<TracingValue> traceCorrelationId1 =  elasticsearchClient.searchTraceByCorrelationId("C-ID1");
@@ -198,8 +198,8 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
         Assertions.assertEquals(TraceType.COMMIT, traceCorrelationId1.get(3).getType(), "C-ID1 : second message = commit");
 
         //check All traces with correlationId C-ID2 (send, ack, consume, commit)
-        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.searchTraceByCorrelationId("C-ID2").size() == 4);
-        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.searchRawTraceByTypeAndCorrelationId(TraceType.CONSUME, "C-ID2").size() == 1);
+        Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> elasticsearchClient.searchTraceByCorrelationId("C-ID2").size() == 4);
+        Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> elasticsearchClient.searchRawTraceByTypeAndCorrelationId(TraceType.CONSUME, "C-ID2").size() == 1);
 
 
         //assert
@@ -227,7 +227,7 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
 
         //check commit
         // there is one commit for each partition
-        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.searchRawTraceByType(TraceType.COMMIT).size() == 3);
+        Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> elasticsearchClient.searchRawTraceByType(TraceType.COMMIT).size() == 3);
         final TracingValue rawCommitPartition0 = elasticsearchClient.multiSearch("rawtrace", "type.keyword", TraceType.COMMIT.toString(), "partition","0").get(0);
         final TracingValue commit1 = traceCorrelationId1.get(3);
         final String commitDate1 = rawCommitPartition0.getDate();
@@ -361,8 +361,8 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
         consumeTopic(consumer2, "test", 5);
 
         //check All traces with consume and clientId=consumer2-clientId
-        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.multiSearch("rawtrace", "type.keyword", TraceType.CONSUME.toString(), "clientId.keyword","consumer2-clientId").size() == 10);
-        Awaitility.await().atMost(Duration.FIVE_MINUTES).until(() -> elasticsearchClient.multiSearch("trace", "type.keyword", TraceType.CONSUME.toString(), "clientId.keyword","consumer2-clientId").size() == 10);
+        Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> elasticsearchClient.multiSearch("rawtrace", "type.keyword", TraceType.CONSUME.toString(), "clientId.keyword","consumer2-clientId").size() == 10);
+        Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> elasticsearchClient.multiSearch("trace", "type.keyword", TraceType.CONSUME.toString(), "clientId.keyword","consumer2-clientId").size() == 10);
 
         //assert consume
         final List<TracingValue> traceConsume =  elasticsearchClient.multiSearch("trace", "type.keyword", TraceType.CONSUME.toString(), "clientId.keyword","consumer2-clientId");
