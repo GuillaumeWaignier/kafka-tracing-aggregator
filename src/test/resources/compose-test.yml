@@ -155,7 +155,6 @@ services:
 
   kafkahq:
     image: tchiotludo/kafkahq:0.12.0
-    container_name: kafkahq
     networks:
       - confluent
     ports:
