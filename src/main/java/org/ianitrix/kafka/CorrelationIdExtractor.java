@@ -2,11 +2,9 @@ package org.ianitrix.kafka;
 
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.streams.KeyValue;
-import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.ianitrix.kafka.interceptors.AbstractTracingInterceptor;
-import org.ianitrix.kafka.interceptors.pojo.TraceType;
 import org.ianitrix.kafka.interceptors.pojo.TracingKey;
 import org.ianitrix.kafka.interceptors.pojo.TracingValue;
 

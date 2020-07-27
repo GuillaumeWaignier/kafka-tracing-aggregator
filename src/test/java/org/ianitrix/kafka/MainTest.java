@@ -1,4 +1,4 @@
-package org.ianitrix.kafka.utils;
+package org.ianitrix.kafka;
 
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.Properties;
 
-public class MainTest {
+class MainTest {
 
     /** Mocked appender */
     @Mock

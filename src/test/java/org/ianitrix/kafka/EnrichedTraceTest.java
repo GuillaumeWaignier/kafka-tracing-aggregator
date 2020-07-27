@@ -25,7 +25,7 @@ import java.util.concurrent.ExecutionException;
 
 @Testcontainers
 @Slf4j
-public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
+class EnrichedTraceTest extends AbstractEnrichedTraceTest {
 
     @Container
     public static final DockerComposeContainer KAFKA =
@@ -45,7 +45,7 @@ public class EnrichedTraceTest extends AbstractEnrichedTraceTest {
     }
 
     @Test
-    public void testSendMessage() throws ExecutionException, InterruptedException {
+    void testSendMessage() throws ExecutionException, InterruptedException {
         subTestFirstSend();
         subTestSecondSend();
 
