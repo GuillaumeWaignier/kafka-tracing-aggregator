@@ -40,6 +40,7 @@
 		<confluent.version>5.5.1</confluent.version>
 		<elasticsearch.version>7.8.0</elasticsearch.version>
 		<junit.version>5.6.2</junit.version>
+		<junit5-system-exit.version>1.0.0</junit5-system-exit.version>
 		<kafka.version>2.4.0</kafka.version>
 		<logback.version>1.2.3</logback.version>
 		<lombok.version>1.18.12</lombok.version>
@@ -95,6 +96,12 @@
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-engine</artifactId>
 			<version>${junit.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.ginsberg</groupId>
+			<artifactId>junit5-system-exit</artifactId>
+			<version>${junit5-system-exit.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

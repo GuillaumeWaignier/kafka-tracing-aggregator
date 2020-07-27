@@ -73,7 +73,7 @@ public class AggregatorTraceStream {
         }
     }
 
-    private static Properties loadConfigurationFile(final String file) {
+    public static Properties loadConfigurationFile(final String file) {
         final File propertiesFile = new File(file);
         final Properties properties = new Properties();
 
