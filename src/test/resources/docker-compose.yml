@@ -28,6 +28,7 @@ services:
       - cluster.initial_master_nodes=elasticsearch
       - bootstrap.memory_lock=false
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - transport.host=localhost
     networks:
       - elastic
 
