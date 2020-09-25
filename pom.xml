@@ -31,7 +31,7 @@
 		<maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
 		<maven-source-plugin.version>3.2.1</maven-source-plugin.version>
 		<maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
-		<mockito.version>3.5.7</mockito.version>
+		<mockito.version>3.5.13</mockito.version>
 
 		<tracing-interceptors.version>0.0.1</tracing-interceptors.version>
 
