@@ -11,6 +11,15 @@ Aggregate Kafka traces produced by the [trace interceptor](https://github.com/Gu
 
 All aggregated traces are kafka messages sent to the topic **\_aggregatedTrace**.
 
+# Architecture
+
+![kafka-tracing-interceptor](kafka-tracing-interceptor.svg "Architecture")
+
+The [trace interceptor](https://github.com/GuillaumeWaignier/kafka-tracing-interceptors) produces in the topic **\_tracing** for each record produced and consumed.
+The kstream kafka-tracing-aggregator enriches the traces and sends them in topic **\_aggregatedTrace**.
+A kafka connect connect consume **\_aggregatedTrace** and insert document in Elasticsearch.
+A kibana dashboard provide some visualization.
+
 ## Usage (Command line)
 
 ```bash
