@@ -1,9 +1,10 @@
 package org.ianitrix.kafka.pojo;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 import org.ianitrix.kafka.interceptors.pojo.TracingValue;
-import org.testcontainers.shaded.com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import org.testcontainers.shaded.com.fasterxml.jackson.annotation.JsonInclude;
+
 
 @Data
 @Builder
