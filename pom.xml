@@ -38,7 +38,7 @@
 		<!-- dependency versions -->
 		<awaitility.version>4.0.3</awaitility.version>
 		<confluent.version>5.5.1</confluent.version>
-		<elasticsearch.version>7.9.0</elasticsearch.version>
+		<elasticsearch.version>7.13.1</elasticsearch.version>
 		<junit.version>5.7.0</junit.version>
 		<junit5-system-exit.version>1.0.0</junit5-system-exit.version>
 		<kafka.version>2.4.0</kafka.version>
