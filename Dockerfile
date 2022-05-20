@@ -1,4 +1,4 @@
-FROM openjdk:11.0.3-slim
+FROM openjdk:18.0.1.1-slim
 
 
 ARG PROMETHEUS_VERSION=0.12.0
